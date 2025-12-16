@@ -1,0 +1,5 @@
+{
+  "name": "NISA Simulator (Rakuten Edition)",
+  "description": "A comprehensive simulation tool for Japan's NISA system, focusing on Rakuten Securities popular funds. Calculates asset growth with limits, accumulation, and withdrawal phases.",
+  "requestFramePermissions": []
+}
