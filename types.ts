@@ -98,6 +98,13 @@ export interface HousingLoanProfile {
   monthlyMaintenanceFee: number; // Management fee + Repair reserve + Tax (monthly avg)
 }
 
+export interface FixedCostItem {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: 'monthly' | 'yearly';
+}
+
 export interface FamilySettings {
   // Annual Gift (Rekinen Zoyo)
   giftAnnualAmountPerChild: number; // Annual gift tax exemption (usually 1.1M)
@@ -112,6 +119,9 @@ export interface FamilySettings {
 
   // Housing
   housing: HousingLoanProfile;
+
+  // Fixed Costs
+  fixedCosts: FixedCostItem[]; // Multiple items for detailed cash flow
 }
 
 export interface SimulationState {
@@ -136,7 +146,9 @@ export interface SimulationResultYear {
   annual_housing_cost: number; // Loan + Maintenance
   annual_housing_deduction: number; // Tax Credit amount
   
-  household_disposable_after_fixed: number; // TakeHome - Housing - Investments
+  annual_fixed_cost: number; // New: Fixed living costs
+
+  household_disposable_after_fixed: number; // TakeHome - Housing - FixedCost - Investments
   
   // Husband Stats Breakdown
   h_nisaPrincipal: number;

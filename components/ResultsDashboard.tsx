@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, ComposedChart, StackedBarChart } from 'recharts';
+import { Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, ComposedChart } from 'recharts';
 import { SimulationResultYear, SimulationState } from '../types';
 import { formatCurrency, formatCurrencyFull } from '../utils/simulation';
 import { Gift, Wallet, Shield, TrendingUp, PiggyBank, Coins, Banknote } from 'lucide-react';
@@ -191,6 +191,7 @@ const ResultsDashboard: React.FC<Props> = ({ results, state }) => {
           <Legend verticalAlign="top" height={30} iconType="rect" wrapperStyle={{ fontSize: '11px' }}/>
           
           <Bar dataKey="annual_housing_cost" name="住宅費(ローン+管理費)" stackId="a" fill="#6366f1" />
+          <Bar dataKey="annual_fixed_cost" name="生活固定費" stackId="a" fill="#f59e0b" />
           <Bar dataKey="h_totalAnnualContribution" name="夫 投資" stackId="a" fill="#3B82F6" />
           <Bar dataKey="w_totalAnnualContribution" name="妻 投資" stackId="a" fill="#EC4899" />
           <Bar dataKey="household_disposable_after_fixed" name="生活費・その他(残金)" stackId="a" fill="#10B981" />

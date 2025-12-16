@@ -1,9 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { SimulationState, BonusContribution, PersonProfile, InsuranceProduct, PortfolioAllocation, ChildProfile, ContributionPeriod, IdecoProfile, IncomePeriod } from '../types';
+import { SimulationState, BonusContribution, PersonProfile, InsuranceProduct, PortfolioAllocation, ChildProfile, ContributionPeriod, IdecoProfile, IncomePeriod, FixedCostItem } from '../types';
 import { RAKUTEN_MAJOR_STOCKS, INSURANCE_PRESETS } from '../constants';
 import { getWeightedReturnRate } from '../utils/simulation';
-import { PlusCircle, Trash2, Info, TrendingUp, AlertCircle, Users, Gift, User, Heart, ShieldPlus, Save, Upload, PieChart, Calendar, Clock, PiggyBank, Briefcase, Home } from 'lucide-react';
+import { PlusCircle, Trash2, Info, TrendingUp, AlertCircle, Users, Gift, User, Heart, ShieldPlus, Save, Upload, PieChart, Calendar, Clock, PiggyBank, Briefcase, Home, Wallet } from 'lucide-react';
 
 interface Props {
   state: SimulationState;
@@ -282,6 +282,38 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
       ...state,
       family: { ...state.family, children: newChildren }
     });
+  };
+
+  // --- Fixed Cost Handlers ---
+  const addFixedCost = () => {
+    const newItem: FixedCostItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: '新規項目',
+      amount: 10000,
+      frequency: 'monthly'
+    };
+    onChange({
+      ...state,
+      family: { ...state.family, fixedCosts: [...state.family.fixedCosts, newItem] }
+    });
+  };
+
+  const updateFixedCost = (id: string, field: keyof FixedCostItem, value: any) => {
+     const newItems = state.family.fixedCosts.map(item => 
+       item.id === id ? { ...item, [field]: value } : item
+     );
+     onChange({
+       ...state,
+       family: { ...state.family, fixedCosts: newItems }
+     });
+  };
+
+  const removeFixedCost = (id: string) => {
+     const newItems = state.family.fixedCosts.filter(item => item.id !== id);
+     onChange({
+       ...state,
+       family: { ...state.family, fixedCosts: newItems }
+     });
   };
 
   // --- Render Functions ---
@@ -795,7 +827,7 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
                  </div>
               </div>
               <p className="text-xs text-gray-500">
-                ※ 年金不足分は 保険 → NISA → iDeCo の順に充当されます
+                ※ 年金不足分は 保険 → iDeCo → NISA の順に充当されます
               </p>
            </div>
         </div>
@@ -1042,6 +1074,58 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
                     />
                     <span className="absolute right-3 top-2 text-indigo-500 text-sm">円</span>
                 </div>
+             </div>
+          </div>
+       </section>
+
+       {/* Fixed Cost Section */}
+       <section>
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
+             <Wallet className="w-4 h-4 mr-1" /> 生活固定費 (内訳管理)
+          </h3>
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
+             <div className="space-y-3">
+                 <p className="text-xs text-gray-500 mb-2">
+                     住居費以外の固定費を入力してください。(食費・光熱費・保険・税金など)
+                 </p>
+                 {state.family.fixedCosts.map((item) => (
+                     <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white p-2 rounded shadow-sm border border-gray-200">
+                         <div className="flex-1">
+                             <input 
+                               type="text"
+                               value={item.name}
+                               onChange={(e) => updateFixedCost(item.id, 'name', e.target.value)}
+                               className="block w-full rounded-md border-gray-300 shadow-sm text-xs p-2"
+                               placeholder="項目名 (例: 食費)"
+                             />
+                         </div>
+                         <div className="flex items-center gap-2">
+                             <div className="relative w-32">
+                                <input
+                                    type="number"
+                                    value={item.amount}
+                                    onChange={(e) => updateFixedCost(item.id, 'amount', Number(e.target.value))}
+                                    className="block w-full rounded-md border-gray-300 shadow-sm text-xs p-2 text-right pr-8"
+                                />
+                                <span className="absolute right-2 top-2 text-gray-500 text-xs">円</span>
+                             </div>
+                             <select
+                                value={item.frequency}
+                                onChange={(e) => updateFixedCost(item.id, 'frequency', e.target.value)}
+                                className="rounded-md border-gray-300 shadow-sm text-xs p-2 w-20"
+                             >
+                                <option value="monthly">毎月</option>
+                                <option value="yearly">毎年</option>
+                             </select>
+                             <button onClick={() => removeFixedCost(item.id)} className="text-gray-400 hover:text-red-500 p-1">
+                                <Trash2 className="w-4 h-4" />
+                             </button>
+                         </div>
+                     </div>
+                 ))}
+                 <button onClick={addFixedCost} className="text-xs text-blue-600 flex items-center font-bold mt-2">
+                    <PlusCircle className="w-3 h-3 mr-1" /> 固定費を追加
+                 </button>
              </div>
           </div>
        </section>

@@ -158,6 +158,11 @@ export const INITIAL_STATE: SimulationState = {
       deductionEndDate: `${currentYear + 10}-12`,
       deductionRate: 0.7,
       monthlyMaintenanceFee: 30000
-    }
+    },
+    fixedCosts: [
+      { id: 'fc1', name: '基本生活費 (食費・日用品)', amount: 150000, frequency: 'monthly' },
+      { id: 'fc2', name: '水道光熱費・通信費', amount: 30000, frequency: 'monthly' },
+      { id: 'fc3', name: '車両維持費 (保険・税金)', amount: 100000, frequency: 'yearly' }
+    ]
   }
 };
