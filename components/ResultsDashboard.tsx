@@ -192,10 +192,17 @@ const ResultsDashboard: React.FC<Props> = ({ results, state }) => {
           
           <Bar dataKey="annual_housing_cost" name="住宅費(ローン+管理費)" stackId="a" fill="#6366f1" />
           <Bar dataKey="annual_fixed_cost" name="生活固定費" stackId="a" fill="#f59e0b" />
+          <Bar dataKey="annual_furusato_payment" name="ふるさと納税" stackId="a" fill="#059669" />
           <Bar dataKey="h_totalAnnualContribution" name="夫 投資" stackId="a" fill="#3B82F6" />
           <Bar dataKey="w_totalAnnualContribution" name="妻 投資" stackId="a" fill="#EC4899" />
           <Bar dataKey="household_disposable_after_fixed" name="生活費・その他(残金)" stackId="a" fill="#10B981" />
           
+          {/* We display received gifts as a negative stack or separate line? No, let's treat it as extending the disposable bar visually or just assume it's part of the funding source. 
+              Since this chart sums up to 'Use of Funds', and 'Disposable' is the remainder, 
+              if Disposable is high because of Gifts, it will show naturally.
+              However, strictly speaking, this chart visualizes 'Outflows'. 
+              Let's allow Disposable to be larger than Income if Gifts are present.
+          */}
         </ComposedChart>
       </ResponsiveContainer>
   );
@@ -287,8 +294,8 @@ const ResultsDashboard: React.FC<Props> = ({ results, state }) => {
             {renderCashFlowChart()}
         </div>
         <div className="mt-2 text-xs text-gray-500 text-center">
-           <p>※ 棒グラフの全体高さが「世帯手取り年収」を表します。</p>
-           <p>※ 住宅ローン控除、社会保険料等を簡易計算して算出しています。</p>
+           <p>※ 棒グラフの全体高さが「世帯手取り年収 (＋受贈資金)」を表します。</p>
+           <p>※ 住宅ローン控除、ふるさと納税、iDeCo控除等を簡易計算して反映しています。</p>
         </div>
       </div>
 

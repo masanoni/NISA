@@ -94,6 +94,9 @@ const DEFAULT_PROFILE: PersonProfile = {
     { id: 'inc1', startAge: 22, endAge: 60, amount: 5000000 },
     { id: 'inc2', startAge: 61, endAge: 65, amount: 3000000 },
   ],
+  furusatoNozeiAmount: 50000, // Default 50k donation
+
+  giftReceivingPeriods: [], // Received from parents
 
   contributionPeriods: [
     { 
@@ -123,7 +126,8 @@ export const INITIAL_STATE: SimulationState = {
     incomePeriods: [
         { id: 'h1', startAge: 25, endAge: 60, amount: 6000000 },
         { id: 'h2', startAge: 61, endAge: 65, amount: 3000000 }
-    ]
+    ],
+    furusatoNozeiAmount: 80000
   },
   wife: { 
     ...DEFAULT_PROFILE, 
@@ -136,7 +140,8 @@ export const INITIAL_STATE: SimulationState = {
     incomePeriods: [
         { id: 'w1', startAge: 25, endAge: 55, amount: 4000000 },
         { id: 'w2', startAge: 56, endAge: 65, amount: 1000000 }
-    ]
+    ],
+    furusatoNozeiAmount: 30000
   },
   family: {
     giftAnnualAmountPerChild: 1100000, // 1.1 Million JPY default

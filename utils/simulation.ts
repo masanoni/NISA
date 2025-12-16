@@ -1,5 +1,5 @@
 
-import { SimulationState, SimulationResultYear, PersonProfile, InsuranceProduct, PortfolioAllocation, ContributionPeriod, IdecoProfile, IncomePeriod } from '../types';
+import { SimulationState, SimulationResultYear, PersonProfile, InsuranceProduct, PortfolioAllocation, ContributionPeriod, IdecoProfile, IncomePeriod, GiftReceivingPeriod } from '../types';
 import { MAX_LIFETIME_CONTRIBUTION, RAKUTEN_MAJOR_STOCKS } from '../constants';
 
 // --- Helper Functions ---
@@ -33,10 +33,20 @@ const getIncomeForAge = (periods: IncomePeriod[], age: number): number => {
   return period ? period.amount : 0;
 };
 
+const getReceivedGiftForAge = (periods: GiftReceivingPeriod[], age: number): number => {
+  const period = periods.find(p => age >= p.startAge && age <= p.endAge);
+  return period ? period.amount : 0;
+};
+
 // Simplified Tax Calculation (Japan)
-// Returns { tax, socialInsurance, takeHome }
-const calculateAnnualTax = (grossIncome: number, housingDeduction: number = 0, idecoContribution: number = 0) => {
-  if (grossIncome <= 0) return { tax: 0, social: 0, takeHome: 0 };
+// Returns { tax, socialInsurance, takeHome, reducedTax }
+const calculateAnnualTax = (
+    grossIncome: number, 
+    housingDeduction: number = 0, 
+    idecoContribution: number = 0,
+    furusatoDonation: number = 0
+) => {
+  if (grossIncome <= 0) return { tax: 0, social: 0, takeHome: 0, reducedTax: 0 };
 
   // 1. Social Insurance (Approx 14.4% roughly + Emp insurance) -> simplified to ~15% for simulation
   const socialInsurance = grossIncome * 0.15;
@@ -50,6 +60,7 @@ const calculateAnnualTax = (grossIncome: number, housingDeduction: number = 0, i
   else if (grossIncome <= 8500000) incomeDeduction = grossIncome * 0.1 + 1100000;
   else incomeDeduction = 1950000; 
 
+  // iDeCo is fully deductible from Taxable Income for both Income Tax and Resident Tax.
   let taxableIncome = grossIncome - incomeDeduction - socialInsurance - 480000 - idecoContribution; 
   if (taxableIncome < 0) taxableIncome = 0;
 
@@ -76,6 +87,7 @@ const calculateAnnualTax = (grossIncome: number, housingDeduction: number = 0, i
   }
 
   // 3. Resident Tax (Approx 10% of Taxable Income)
+  // Simplified: Taxable for Resident is slightly diff (deductions differ), but use same base for sim.
   let residentTax = taxableIncome * 0.10 + 5000; 
   
   if (housingDeduction > appliedHousingDed || (housingDeduction > 0 && incomeTax === 0)) {
@@ -84,11 +96,31 @@ const calculateAnnualTax = (grossIncome: number, housingDeduction: number = 0, i
      }
   }
 
-  const totalTax = incomeTax + residentTax;
-  const takeHome = grossIncome - socialInsurance - totalTax;
+  // 4. Furusato Nozei Deduction
+  // It deducts (Amount - 2000) from Resident Tax (mostly).
+  // Simplified: Reduce Total Tax by (Amount - 2000).
+  let furusatoDeduction = 0;
+  if (furusatoDonation > 2000) {
+      furusatoDeduction = furusatoDonation - 2000;
+  }
+  
+  // Ensure we don't deduct more than the tax itself (Simplified cap, reality is complicated)
+  const totalTaxBeforeFurusato = incomeTax + residentTax;
+  if (furusatoDeduction > totalTaxBeforeFurusato) {
+      furusatoDeduction = totalTaxBeforeFurusato;
+  }
+  
+  const finalTotalTax = totalTaxBeforeFurusato - furusatoDeduction;
+  
+  // Note: Furusato Donation is a cash outflow handled outside this tax calc or subtracted from take home.
+  // Standard TakeHome = Gross - Social - Tax.
+  // Since we reduced 'Tax' by Furusato, the 'TakeHome' here technically includes the money you SHOULD have paid in tax.
+  // But you paid it as Donation.
+  // So, Disposable = TakeHome - FurusatoDonation.
+  const takeHome = grossIncome - socialInsurance - finalTotalTax;
 
   return { 
-      tax: totalTax, 
+      tax: finalTotalTax, 
       social: socialInsurance, 
       takeHome: Math.max(0, takeHome),
       deductionEffect: appliedHousingDed 
@@ -110,9 +142,6 @@ export const getWeightedReturnRate = (portfolio: PortfolioAllocation[]): number 
 };
 
 // --- Withdrawal Helper ---
-// Attempts to withdraw `amount` from the assets in order: Insurance -> iDeCo (if age >= 60) -> NISA
-// Modifies the passed state objects.
-// Returns the amount actually withdrawn.
 const withdrawFromAssets = (
     amount: number,
     age: number,
@@ -274,9 +303,11 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
           wGross: number,
           taxSoc: number,
           takeHome: number,
+          giftReceived: number,
           housingCost: number,
           housingDed: number,
           fixedCost: number,
+          furusato: number,
           remDisposable: number
       }
     ) => {
@@ -311,9 +342,11 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
       household_grossIncome: cashFlowData.hGross + cashFlowData.wGross,
       household_taxAndSocial: cashFlowData.taxSoc,
       household_takeHome: cashFlowData.takeHome,
+      annual_received_gift: cashFlowData.giftReceived,
       annual_housing_cost: cashFlowData.housingCost,
       annual_housing_deduction: cashFlowData.housingDed,
       annual_fixed_cost: cashFlowData.fixedCost,
+      annual_furusato_payment: cashFlowData.furusato,
       household_disposable_after_fixed: cashFlowData.remDisposable,
 
       h_nisaPrincipal: safePrincipal(h_Nisa.principal, h_Nisa.assets),
@@ -356,7 +389,7 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
     });
   };
 
-  pushResult(0, startYear, 0, 0, { hGross: 0, wGross: 0, taxSoc: 0, takeHome: 0, housingCost: 0, housingDed: 0, fixedCost: 0, remDisposable: 0 });
+  pushResult(0, startYear, 0, 0, { hGross: 0, wGross: 0, taxSoc: 0, takeHome: 0, giftReceived: 0, housingCost: 0, housingDed: 0, fixedCost: 0, furusato: 0, remDisposable: 0 });
 
   for (let yearIdx = 1; yearIdx <= durationYears; yearIdx++) {
     const currentYear = startYear + yearIdx;
@@ -509,13 +542,21 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
     let h_Deduction = 0, w_Deduction = 0;
     if (h_Gross > w_Gross) h_Deduction = annualHousingDeduction; else w_Deduction = annualHousingDeduction;
 
-    const h_TaxRes = calculateAnnualTax(h_Gross, h_Deduction, h_IdecoTotalYear);
-    const w_TaxRes = calculateAnnualTax(w_Gross, w_Deduction, w_IdecoTotalYear);
+    const h_TaxRes = calculateAnnualTax(h_Gross, h_Deduction, h_IdecoTotalYear, state.husband.furusatoNozeiAmount);
+    const w_TaxRes = calculateAnnualTax(w_Gross, w_Deduction, w_IdecoTotalYear, state.wife.furusatoNozeiAmount);
     
+    // Gifts Received (Net Cash Inflow)
+    const h_Gift = getReceivedGiftForAge(state.husband.giftReceivingPeriods, h_Age);
+    const w_Gift = getReceivedGiftForAge(state.wife.giftReceivingPeriods, w_Age);
+    const totalGiftsReceived = h_Gift + w_Gift;
+
     const household_TakeHome = h_TaxRes.takeHome + w_TaxRes.takeHome + annualPension;
     const household_Investment = h_YearlyPaid + w_YearlyPaid;
     const household_Housing = annualHousingPayment;
     
+    // Furusato Outflow (The cash donation itself)
+    const annualFurusatoPayment = state.husband.furusatoNozeiAmount + state.wife.furusatoNozeiAmount;
+
     // --- Calculate Annual Fixed Cost from List ---
     let annualFixedCost = 0;
     state.family.fixedCosts.forEach(item => {
@@ -526,10 +567,11 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
       }
     });
     
-    const remainingDisposable = household_TakeHome - household_Investment - household_Housing - annualFixedCost;
+    // Disposable Calculation:
+    // TakeHome (includes Furusato Tax Benefit) + Gifts - Investment - Housing - FixedCost - Furusato Donation
+    const remainingDisposable = household_TakeHome + totalGiftsReceived - household_Investment - household_Housing - annualFixedCost - annualFurusatoPayment;
 
-    // --- 4. ANNUAL GIFTS (Correctly applying Withdrawal Logic) ---
-    // Update local vars for check
+    // --- 4. ANNUAL GIFTS TO CHILDREN ---
     let h_InsAssets = h_InsuranceProducts.reduce((sum, p) => sum + p.currentCashValue, 0);
     let w_InsAssets = w_InsuranceProducts.reduce((sum, p) => sum + p.currentCashValue, 0);
     
@@ -552,7 +594,6 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
         let takeFromH = 0; 
         let takeFromW = 0;
         
-        // Decide split based on asset size
         if (h_Total > w_Total) {
            const diff = h_Total - w_Total;
            const amount = Math.min(diff, remainingNeed);
@@ -567,7 +608,6 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
             takeFromW += remainingNeed / 2; 
         }
 
-        // Apply withdrawals
         if (takeFromH > 0) {
             withdrawFromAssets(takeFromH, h_Age, h_InsuranceProducts, h_Ideco, h_Nisa);
         }
@@ -588,9 +628,11 @@ export const calculateSimulation = (state: SimulationState): SimulationResultYea
             wGross: w_Gross,
             taxSoc: h_TaxRes.tax + h_TaxRes.social + w_TaxRes.tax + w_TaxRes.social,
             takeHome: household_TakeHome,
+            giftReceived: totalGiftsReceived,
             housingCost: annualHousingPayment,
             housingDed: annualHousingDeduction,
             fixedCost: annualFixedCost,
+            furusato: annualFurusatoPayment,
             remDisposable: remainingDisposable
         }
     );

@@ -22,7 +22,14 @@ export interface IncomePeriod {
   id: string;
   startAge: number;
   endAge: number;
-  amount: number; // Annual Gross Income (Ten-man yen usually, but here assume raw JPY)
+  amount: number; // Annual Gross Income
+}
+
+export interface GiftReceivingPeriod {
+  id: string;
+  startAge: number;
+  endAge: number;
+  amount: number; // Annual Gift Amount Received
 }
 
 export interface BonusContribution {
@@ -57,8 +64,12 @@ export interface PersonProfile {
   pensionStartAge: number;
   monthlyPension: number; // Monthly pension receipt
   
-  // Income
+  // Income & Tax
   incomePeriods: IncomePeriod[];
+  furusatoNozeiAmount: number; // Annual Donation Amount
+
+  // Gifts Received (from Parents/Grandparents)
+  giftReceivingPeriods: GiftReceivingPeriod[];
 
   // NISA
   assetDataDate: string; // YYYY-MM-DD (Date when the current principal/profit was recorded)
@@ -106,7 +117,7 @@ export interface FixedCostItem {
 }
 
 export interface FamilySettings {
-  // Annual Gift (Rekinen Zoyo)
+  // Annual Gift (Rekinen Zoyo) TO Children
   giftAnnualAmountPerChild: number; // Annual gift tax exemption (usually 1.1M)
   giftStartAge: number; // Based on Husband's age
   giftEndAge: number; // Based on Husband's age
@@ -143,12 +154,15 @@ export interface SimulationResultYear {
   household_taxAndSocial: number; // Sum of Tax + Social Ins
   household_takeHome: number; // Gross - Tax/Social
   
+  annual_received_gift: number; // Total gifts received by H & W from parents
+
   annual_housing_cost: number; // Loan + Maintenance
   annual_housing_deduction: number; // Tax Credit amount
   
   annual_fixed_cost: number; // New: Fixed living costs
+  annual_furusato_payment: number; // Donation outflow
 
-  household_disposable_after_fixed: number; // TakeHome - Housing - FixedCost - Investments
+  household_disposable_after_fixed: number; // TakeHome + Gifts - Housing - FixedCost - Furusato - Investments
   
   // Husband Stats Breakdown
   h_nisaPrincipal: number;

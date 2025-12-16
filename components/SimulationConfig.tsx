@@ -1,9 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { SimulationState, BonusContribution, PersonProfile, InsuranceProduct, PortfolioAllocation, ChildProfile, ContributionPeriod, IdecoProfile, IncomePeriod, FixedCostItem } from '../types';
+import { SimulationState, BonusContribution, PersonProfile, InsuranceProduct, PortfolioAllocation, ChildProfile, ContributionPeriod, IdecoProfile, IncomePeriod, FixedCostItem, GiftReceivingPeriod } from '../types';
 import { RAKUTEN_MAJOR_STOCKS, INSURANCE_PRESETS } from '../constants';
 import { getWeightedReturnRate } from '../utils/simulation';
-import { PlusCircle, Trash2, Info, TrendingUp, AlertCircle, Users, Gift, User, Heart, ShieldPlus, Save, Upload, PieChart, Calendar, Clock, PiggyBank, Briefcase, Home, Wallet } from 'lucide-react';
+import { PlusCircle, Trash2, Info, TrendingUp, AlertCircle, Users, Gift, User, Heart, ShieldPlus, Save, Upload, PieChart, Calendar, Clock, PiggyBank, Briefcase, Home, Wallet, Calculator } from 'lucide-react';
 
 interface Props {
   state: SimulationState;
@@ -76,6 +76,32 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
   const removeIncomePeriod = (role: 'husband' | 'wife', id: string) => {
      const person = state[role];
      updatePerson(role, 'incomePeriods', person.incomePeriods.filter(p => p.id !== id));
+  };
+
+
+  // --- Gift Receiving Handlers ---
+  const addGiftReceivingPeriod = (role: 'husband' | 'wife') => {
+    const person = state[role];
+    const newPeriod: GiftReceivingPeriod = {
+        id: Math.random().toString(36).substr(2, 9),
+        startAge: 30,
+        endAge: 40,
+        amount: 1100000
+    };
+    updatePerson(role, 'giftReceivingPeriods', [...person.giftReceivingPeriods, newPeriod]);
+  };
+
+  const updateGiftReceivingPeriod = (role: 'husband' | 'wife', id: string, field: keyof GiftReceivingPeriod, value: any) => {
+    const person = state[role];
+    const newPeriods = person.giftReceivingPeriods.map(p => 
+       p.id === id ? { ...p, [field]: value } : p
+    );
+    updatePerson(role, 'giftReceivingPeriods', newPeriods);
+  };
+
+  const removeGiftReceivingPeriod = (role: 'husband' | 'wife', id: string) => {
+     const person = state[role];
+     updatePerson(role, 'giftReceivingPeriods', person.giftReceivingPeriods.filter(p => p.id !== id));
   };
 
 
@@ -357,10 +383,26 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
       {/* Income Section */}
       <section>
           <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center text-emerald-700">
-             <Briefcase className="w-4 h-4 mr-1" /> 年収設定
+             <Briefcase className="w-4 h-4 mr-1" /> 年収・控除設定
           </h3>
+          <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 mb-3">
+             <label className="block text-xs font-bold text-emerald-800 mb-1 flex items-center">
+                 <Calculator className="w-3 h-3 mr-1" /> ふるさと納税 (年間寄付額)
+             </label>
+             <div className="relative">
+                 <input
+                     type="number"
+                     value={profile.furusatoNozeiAmount}
+                     onChange={(e) => updatePerson(role, 'furusatoNozeiAmount', Number(e.target.value))}
+                     className="block w-full rounded-md border-emerald-200 shadow-sm text-sm p-2 text-right pr-8"
+                 />
+                 <span className="absolute right-3 top-2 text-emerald-500 text-sm">円</span>
+             </div>
+             <p className="text-[10px] text-emerald-600 mt-1">※ (寄付額 - 2,000円) が住民税から控除される計算になります</p>
+          </div>
+
           <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-             <p className="text-xs text-emerald-700 mb-2">年齢ごとの額面年収を設定してください (手取りは自動計算されます)</p>
+             <p className="text-xs text-emerald-700 mb-2 font-bold">年齢ごとの額面年収 (手取りは自動計算)</p>
              {profile.incomePeriods.map((period) => (
                 <div key={period.id} className="bg-white p-2 rounded mb-2 border border-emerald-100 flex items-center space-x-2">
                     <div className="flex items-center space-x-1">
@@ -396,6 +438,55 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
              ))}
              <button onClick={() => addIncomePeriod(role)} className="text-xs text-emerald-600 flex items-center font-medium mt-1">
                  <PlusCircle className="w-3 h-3 mr-1" /> 期間を追加する
+              </button>
+          </div>
+      </section>
+
+       {/* Gift Receiving Section */}
+       <section>
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center text-yellow-600">
+             <Gift className="w-4 h-4 mr-1" /> 親からの暦年贈与受取
+          </h3>
+          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+             <p className="text-[10px] text-yellow-700 mb-2">
+                 ※ ここに入力した金額は「所得」には含まれず、手取り(可処分所得)に直接加算されます。<br/>
+                 ※ 投資原資として利用可能です。税務上の贈与税計算は行いません(手取り額を入力してください)。
+             </p>
+             {profile.giftReceivingPeriods.map((period) => (
+                <div key={period.id} className="bg-white p-2 rounded mb-2 border border-yellow-100 flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
+                        <input
+                           type="number"
+                           value={period.startAge}
+                           onChange={(e) => updateGiftReceivingPeriod(role, period.id, 'startAge', Number(e.target.value))}
+                           className="w-12 text-sm border rounded p-1 text-right"
+                        />
+                        <span className="text-xs">歳 ~</span>
+                        <input
+                           type="number"
+                           value={period.endAge}
+                           onChange={(e) => updateGiftReceivingPeriod(role, period.id, 'endAge', Number(e.target.value))}
+                           className="w-12 text-sm border rounded p-1 text-right"
+                        />
+                        <span className="text-xs">歳</span>
+                    </div>
+                    <div className="flex-1 relative">
+                        <input
+                           type="number"
+                           value={period.amount}
+                           onChange={(e) => updateGiftReceivingPeriod(role, period.id, 'amount', Number(e.target.value))}
+                           step={100000}
+                           className="w-full text-sm border rounded p-1 text-right pr-6"
+                        />
+                        <span className="absolute right-2 top-1.5 text-xs text-gray-500">円</span>
+                    </div>
+                    <button onClick={() => removeGiftReceivingPeriod(role, period.id)} className="text-red-400">
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+             ))}
+             <button onClick={() => addGiftReceivingPeriod(role)} className="text-xs text-yellow-600 flex items-center font-medium mt-1">
+                 <PlusCircle className="w-3 h-3 mr-1" /> 贈与受取期間を追加
               </button>
           </div>
       </section>
@@ -603,6 +694,7 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
                     />
                  </div>
               </div>
+              <p className="text-[10px] text-teal-600">※ iDeCo掛金は全額所得控除の対象として税計算に反映されます</p>
 
               {/* iDeCo Portfolio */}
               <div>
@@ -840,7 +932,7 @@ const SimulationConfig: React.FC<Props> = ({ state, onChange }) => {
     <div className="space-y-6 animate-fadeIn">
        <section>
         <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
-          <Gift className="w-4 h-4 mr-1" /> 暦年贈与・結婚資金贈与
+          <Gift className="w-4 h-4 mr-1" /> 子への暦年贈与・結婚資金贈与
         </h3>
         
         <div className="space-y-4">
